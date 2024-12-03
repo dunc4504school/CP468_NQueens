@@ -104,7 +104,7 @@ void UpdateQueen(Board *b, int col, int newRow) {
 }
 
 // Minimize conflicts for queens in the given columns
-void MinimizeConflicts(Board *b, int *cols, int numCols, unsigned int *seed) {
+void MinimizeConflicts(Board *b, int *cols, int numCols) {
 
     int *bestRows = (int *)malloc(b->n * sizeof(int));
 
@@ -137,7 +137,7 @@ void MinimizeConflicts(Board *b, int *cols, int numCols, unsigned int *seed) {
         }
 
         // Randomly select one of the best rows to diversify moves
-        int newRow = bestRows[rand_r(seed) % numBestRows];
+        int newRow = bestRows[rand() % numBestRows];
 
         UpdateQueen(b, col, newRow);
     }
@@ -167,20 +167,18 @@ typedef struct {
     Board *board;
     int *cols;
     int numCols;
-    unsigned int seed;
 } ThreadData;
 
 // Thread function to minimize conflicts
 void *MinimizeConflictsThread(void *arg) {
     ThreadData *data = (ThreadData *)arg;
-    MinimizeConflicts(data->board, data->cols, data->numCols, &(data->seed));
+    MinimizeConflicts(data->board, data->cols, data->numCols);
     return NULL;
 }
 
 // Solve the N-Queens problem using an optimized parallel Min-Conflicts
 // algorithm
 double SolveParallel(int n, int maxSteps) {
-    unsigned int globalSeed = 12345; // Use a constant seed for reproducibility
 
     clock_t startTime = clock();
     Board *board = NewBoard(n);
@@ -226,7 +224,7 @@ double SolveParallel(int n, int maxSteps) {
 
         // Shuffle conflict columns to randomize processing order
         for (int i = numConflicts - 1; i > 0; i--) {
-            int j = rand_r(&globalSeed) % (i + 1);
+            int j = rand() % (i + 1);
             int temp = conflictCols[i];
             conflictCols[i] = conflictCols[j];
             conflictCols[j] = temp;
@@ -250,8 +248,7 @@ double SolveParallel(int n, int maxSteps) {
             threadData[i].board = board;
             threadData[i].cols = &conflictCols[start];
             threadData[i].numCols = end - start;
-            threadData[i].seed = 12345 + i;  // Use a constant seed with thread index for reproducibility
-
+            
             pthread_create(&threads[i], NULL, MinimizeConflictsThread, &threadData[i]);
             numThreads++;
         }
@@ -277,8 +274,6 @@ double SolveParallel(int n, int maxSteps) {
 
 
 int main() {
-    // Initialize random seed
-    srand(12345);
 
     // Range of board sizes to test
     int boardSizes[] = {1000000};
